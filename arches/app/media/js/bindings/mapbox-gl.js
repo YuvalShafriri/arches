@@ -1,4 +1,3 @@
-
 define([
     'jquery',
     'underscore',
@@ -16,7 +15,6 @@ define([
             var options = ko.unwrap(valueAccessor()).mapOptions || {};
             var mapInitOptions = {};
             mapboxgl.accessToken = arches.mapboxApiKey;
-            //add rtl hebrew support ()
             mapboxgl.setRTLTextPlugin(
                 'https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-rtl-text/v0.2.3/mapbox-gl-rtl-text.js',
                 null,
