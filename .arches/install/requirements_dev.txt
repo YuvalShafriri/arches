@@ -1,0 +1,9 @@
+fabric
+livereload
+webtest
+django-webtest
+sst
+django-nose
+coverage
+sauceclient
+mock==2.0.0

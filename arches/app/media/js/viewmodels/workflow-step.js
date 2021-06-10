@@ -27,8 +27,6 @@ define([
 
         this.hasDirtyTile = ko.observable(false);
 
-        this.saving = ko.observable(false);
-
         this.complete = ko.observable(false);
         this.required = ko.observable(ko.unwrap(config.required));
         this.autoAdvance = ko.observable(true);
@@ -41,12 +39,10 @@ define([
         var externalStepSourceData = ko.unwrap(config.externalstepdata) || {};
         Object.keys(externalStepSourceData).forEach(function(key) {
             if (key !== '__ko_mapping__') {
-                config.workflow.getStepData(externalStepSourceData[key]).then(function(data) {
-                    self.externalStepData[key] = {
-                        stepName: externalStepSourceData[key],
-                        data: data,
-                    };
-                });
+                self.externalStepData[key] = {
+                    stepName: externalStepSourceData[key],
+                    data: config.workflow.getStepData(externalStepSourceData[key]),
+                };
             }
         });
         delete config.externalstepdata;
@@ -57,13 +53,14 @@ define([
                 /* iterates over each component in layout */
                 return Object.values(componentData).reduce(function(acc, componentDatum) {
                     /* most components store data for a single tile */ 
-                    if (!acc && componentDatum instanceof Array && componentDatum.length === 1) {
-                        if (componentDatum[0].resourceInstanceId) {
-                            return componentDatum[0].resourceInstanceId;
-                        } else if (componentDatum[0] instanceof Array && componentDatum[0][1].resourceInstanceId) {
-                            return componentDatum[0][1].resourceInstanceId;
-                        }
+                    if (componentDatum instanceof Array && componentDatum.length === 1) {
+                        componentDatum = componentDatum[0];
                     }
+                    
+                    if (!acc && componentDatum.resourceInstanceId) {
+                        return componentDatum.resourceInstanceId;
+                    }
+
                     return acc;
                 }, null);
             };
@@ -169,8 +166,8 @@ define([
             if (!allStepsLocalStorageData[self.id()]) {
                 allStepsLocalStorageData[self.id()] = {};
             }
-
-            allStepsLocalStorageData[self.id()][key] = value ? koMapping.toJSON(value) : value;
+            
+            allStepsLocalStorageData[self.id()][key] = value;
 
             localStorage.setItem(
                 STEPS_LABEL, 
@@ -182,7 +179,7 @@ define([
             var allStepsLocalStorageData = JSON.parse(localStorage.getItem(STEPS_LABEL)) || {};
 
             if (allStepsLocalStorageData[self.id()]) {
-                return JSON.parse(allStepsLocalStorageData[self.id()][key]);
+                return allStepsLocalStorageData[self.id()][key];
             }
         };
 
@@ -196,9 +193,7 @@ define([
 
         this.getExternalStepData = function() {
             Object.keys(self.externalStepData).forEach(function(key) {
-                config.workflow.getStepData(externalStepSourceData[key]).then(function(data) {
-                    self.externalStepData[key]['data'] = data;
-                });
+                self.externalStepData[key]['data'] = config.workflow.getStepData(externalStepSourceData[key]);
             });
         };
 

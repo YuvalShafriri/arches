@@ -8,7 +8,7 @@ define([
 ], function(ko, _, WidgetViewModel, arches, ResourceSummary, ontologyUtils) {
     var resourceLookup = {};
     var graphCache = {};
-    require(['views/components/related-instance-creator']);
+    require(['views/components/workflows/new-resource-instance']);
     
     /**
     * A viewmodel used for generic alert messages
@@ -72,7 +72,7 @@ define([
             if (graphid in self.graphLookup){
                 return Promise.resolve(self.graphLookup[graphid]);
             } else {
-                return window.fetch(arches.urls.graphs_api + graphid)
+                return fetch('/graphs/' + graphid)
                     .then(function(response){
                         if (!response.ok) {
                             throw new Error(arches.translations.reNetworkReponseError);
@@ -341,7 +341,7 @@ define([
                         if(graphids.length > 0) {
                             data['resource-type-filter'] = JSON.stringify(graphids);
                         }
-                        if (term || typeof params.termFilter === 'function') {
+                        if (term) {
                             if(typeof params.termFilter === 'function'){
                                 params.termFilter(term, data);
                             } else {

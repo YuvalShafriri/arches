@@ -15,6 +15,11 @@ define([
             var options = ko.unwrap(valueAccessor()).mapOptions || {};
             var mapInitOptions = {};
             mapboxgl.accessToken = arches.mapboxApiKey;
+            mapboxgl.setRTLTextPlugin(
+                'https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-rtl-text/v0.2.3/mapbox-gl-rtl-text.js',
+                null,
+                true // Lazy load the plugin
+                );
 
             _.each(options, function(option, key){
                 if (ko.isObservable(option)){

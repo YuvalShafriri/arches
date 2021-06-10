@@ -32,8 +32,6 @@ define([
         };
 
         this.save = function() {
-            self.saving(true);
-
             self.complete(true);
             self.savedData(self.addedData());
         };
@@ -547,10 +545,9 @@ define([
     };
 
 
-    function WorkflowComponentAbstract(componentData, previouslyPersistedComponentData, externalStepData, resourceId, title, complete, saving) {
+    function WorkflowComponentAbstract(componentData, previouslyPersistedComponentData, externalStepData, resourceId, title, complete) {
         var self = this;
 
-        this.saving = saving;
         this.complete = complete;
         this.resourceId = resourceId;
         this.componentData = componentData;
@@ -562,6 +559,7 @@ define([
         this.hasUnsavedData = ko.observable();
 
         this.loading = ko.observable(true);
+        this.saving = ko.observable();
 
         this.initialize = function() {
             if (!componentData.tilesManaged || componentData.tilesManaged === "none") {
@@ -594,10 +592,8 @@ define([
             self.resourceId(ko.unwrap(params.workflow.resourceId));
         } 
 
-        this.saving = params.saving || ko.observable(false);
         this.complete = params.complete || ko.observable(false);
         this.alert = params.alert || ko.observable();
-        this.componentBasedStepClass = ko.unwrap(params.workflowstepclass);
 
         this.dataToPersist = ko.observable({});
         self.dataToPersist.subscribe(function(data) {
@@ -605,11 +601,9 @@ define([
         })
 
         this.hasUnsavedData = ko.observable(false);
-        params.hasDirtyTile(false);
-        
         this.hasUnsavedData.subscribe(function(hasUnsavedData) {
             params.hasDirtyTile(hasUnsavedData);
-        });
+        })
 
         /* 
             `pageLayout` is an observableArray of arrays representing section Information ( `sectionInfo` ).
@@ -655,7 +649,6 @@ define([
     
             params.postSaveCallback(function() {
                 self.hasUnsavedData(false);
-                self.saving(false);
             });
 
             ko.toJS(params.layoutSections).forEach(function(layoutSection) {
@@ -689,8 +682,7 @@ define([
                 params.externalStepData,
                 self.resourceId,
                 params.title, 
-                self.complete,
-                self.saving,
+                self.complete
             );
 
             workflowComponentAbstract.savedData.subscribe(function() {
