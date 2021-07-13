@@ -412,6 +412,7 @@ define([
 
                 var hoverFeature;
 
+
                 map.on('mousemove', function(e) {
                     var style = map.getStyle();
                     if (hoverFeature && hoverFeature.id && style) map.setFeatureState(hoverFeature, { hover: false });
