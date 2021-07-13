@@ -48,7 +48,7 @@ define([
                     });
                 });
             });
-          
+          /*remove setterrain*/  
             // prevents drag events from bubbling
             $(element).mousedown(function(event) {
                 event.stopPropagation();
