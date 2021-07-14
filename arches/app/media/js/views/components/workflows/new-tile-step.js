@@ -36,9 +36,8 @@ define([
         };
 
         this.card = ko.observable();
-        this.tile = ko.observable();
-        params.hasDirtyTile(false);
 
+        this.tile = ko.observable();
         this.tile.subscribe(function(tile) {
             if (tile && params.hasDirtyTile) {
                 tile.dirty.subscribe(function(val) {

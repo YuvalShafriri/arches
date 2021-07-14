@@ -16,6 +16,17 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
+# from __future__ import unicode_literals
+import sys
+import importlib
+import urllib
+importlib.reload (sys)
+#sys .setdefaultencoding('utf8')
+
+
+from io import StringIO
+
+
 import os
 import zipfile
 import json
@@ -52,6 +63,8 @@ logger = logging.getLogger(__name__)
 
 
 class GraphBaseView(BaseManagerView):
+    
+
     def get_context_data(self, **kwargs):
         context = super(GraphBaseView, self).get_context_data(**kwargs)
         try:
@@ -248,21 +261,42 @@ class GraphDesignerView(GraphBaseView):
 
 class GraphDataView(View):
 
+    def to_UTF8(self, graph):
+        strJ=''
+       #j=json.loads(JSONSerializer().serialize(graph, indent=4)) 
+        j=json.loads(JSONSerializer().serialize(graph, indent=4))
+        
+        dmp= json.dumps(j , indent=4, sort_keys=True, ensure_ascii=False).encode('utf-8')
+        return dmp
+    
+
     action = "update_node"
     def get(self, request, graphid, nodeid=None):
+
+           # graph = get_graphs_for_export([graphid])
+           # graph['metadata'] = system_metadata()
+            #''' convert to hebrew '''
+            
+
         if self.action == "export_graph":
             graph = get_graphs_for_export([graphid])
             graph["metadata"] = system_metadata()
-            f = JSONSerializer().serialize(graph, indent=4)
-            graph_name = JSONDeserializer().deserialize(f)["graph"][0]["name"]
 
+           # f = JSONSerializer().serialize(graph, indent=4) 
+            f=self.to_UTF8(graph)
+            #graph_name =  JSONDeserializer().deserialize(f)["graph"][0]["name"] 
+            graph_name =urllib.parse.quote( Graph.objects.get(graphid=graphid).name.encode('UTF-8') )
+ 
             response = HttpResponse(f, content_type="json/plain")
-            response["Content-Disposition"] = 'attachment; filename="%s.json"' % (graph_name)
+            response["Content-Disposition"] = 'attachment; filename="%s.json"' % ( graph_name   )
             return response
         elif self.action == "export_mapping_file":
             files_for_export = create_mapping_configuration_file(graphid, True)
-            file_name = Graph.objects.get(graphid=graphid).name
-
+            file_name = urllib.parse.quote(Graph.objects.get(graphid=graphid).name.encode('UTF-8') )
+            
+            # files_for_export = create_mapping_configuration_file(graphid, True)
+            # file_name = Graph.objects.get(graphid=graphid).name         
+                       
             buffer = BytesIO()
 
             with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zip:

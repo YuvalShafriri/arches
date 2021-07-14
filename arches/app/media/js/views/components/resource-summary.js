@@ -63,7 +63,7 @@ define([
                 },
                 graph
             );
-            else if (resId) {
+            else {
                 $.getJSON(arches.urls.resource_report + resId + qs, function(data) {
                     var graphModel = new GraphModel({
                         data: data.graph,

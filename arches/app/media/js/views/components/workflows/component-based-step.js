@@ -21,12 +21,7 @@ define([
             });
 
             self.addedData.push([self.componentData.uniqueInstanceName, value]);
-            if (self.previouslyPersistedComponentData) {
-                self.hasUnsavedData(!(_.isEqual(value, self.previouslyPersistedComponentData[0][1])));
-            }
-            else{
-                self.hasUnsavedData(!!value);
-            }
+            self.hasUnsavedData(value);
         });
 
         this.initialize = function() {
@@ -37,12 +32,8 @@ define([
         };
 
         this.save = function() {
-            self.saving(true);
-
             self.complete(true);
             self.savedData(self.addedData());
-
-            self.saving(false);
         };
 
         this.reset = function() {
@@ -70,7 +61,7 @@ define([
         this.loadData = function(data) {
             /* a flat object of the previously saved data for all tiles */ 
             var tileDataLookup = data.reduce(function(acc, componentData) {
-                var parsedTileData = componentData.data || JSON.parse(componentData.tileData);
+                var parsedTileData = JSON.parse(componentData.tileData);
 
                 Object.keys(parsedTileData).forEach(function(key) {
                     acc[key] = parsedTileData[key];
@@ -87,15 +78,13 @@ define([
                     }
                 });
                 tile._tileData(koMapping.toJSON(tile.data));
-                
+
                 data.forEach(function(datum){                    
-                    if (datum.tileData) {
-                        if (JSON.stringify(Object.keys(koMapping.toJS(tile.data)).sort()) 
-                            === JSON.stringify(Object.keys(JSON.parse(datum.tileData)).sort())) {
-                            tile.nodegroup_id = datum.nodegroupId;
-                            tile.tileid = datum.tileId;
-                            tile.resourceinstance_id = datum.resourceInstanceId;        
-                        }
+                    if (JSON.stringify(Object.keys(koMapping.toJS(tile.data)).sort()) 
+                        === JSON.stringify(Object.keys(JSON.parse(datum.tileData)).sort())) {
+                        tile.nodegroup_id = datum.nodegroupId;
+                        tile.tileid = datum.tileId;
+                        tile.resourceinstance_id = datum.resourceInstanceId;        
                     }
                 });
             });
@@ -249,8 +238,6 @@ define([
             var saveFunction = self.saveFunction();
 
             if (saveFunction) { saveFunction(); }
-
-            self.saving(false);
         };
 
         this.onSaveSuccess = function(savedData) {
@@ -558,16 +545,12 @@ define([
     };
 
 
-    function WorkflowComponentAbstract(componentData, previouslyPersistedComponentData, externalStepData, resourceId, title, complete, saving, locked, lockExternalStep, lockableExternalSteps) {
+    function WorkflowComponentAbstract(componentData, previouslyPersistedComponentData, externalStepData, resourceId, title, complete) {
         var self = this;
 
-        this.saving = saving;
         this.complete = complete;
         this.resourceId = resourceId;
         this.componentData = componentData;
-        this.locked = locked;
-        this.lockExternalStep = lockExternalStep;
-        this.lockableExternalSteps = lockableExternalSteps;
 
         this.previouslyPersistedComponentData = previouslyPersistedComponentData;
         this.externalStepData = externalStepData;
@@ -576,6 +559,7 @@ define([
         this.hasUnsavedData = ko.observable();
 
         this.loading = ko.observable(true);
+        this.saving = ko.observable();
 
         this.initialize = function() {
             if (!componentData.tilesManaged || componentData.tilesManaged === "none") {
@@ -599,7 +583,7 @@ define([
 
     function viewModel(params) {
         var self = this;
-        
+
         this.resourceId = ko.observable();
         if (ko.unwrap(params.resourceid)) {
             self.resourceId(ko.unwrap(params.resourceid));
@@ -608,13 +592,8 @@ define([
             self.resourceId(ko.unwrap(params.workflow.resourceId));
         } 
 
-        this.saving = params.saving || ko.observable(false);
         this.complete = params.complete || ko.observable(false);
         this.alert = params.alert || ko.observable();
-        this.componentBasedStepClass = ko.unwrap(params.workflowstepclass);
-        this.locked = params.locked;
-        this.lockExternalStep = params.lockExternalStep;
-        this.lockableExternalSteps = params.lockableExternalSteps;
 
         this.dataToPersist = ko.observable({});
         self.dataToPersist.subscribe(function(data) {
@@ -622,11 +601,9 @@ define([
         })
 
         this.hasUnsavedData = ko.observable(false);
-        params.hasDirtyTile(false);
-        
         this.hasUnsavedData.subscribe(function(hasUnsavedData) {
             params.hasDirtyTile(hasUnsavedData);
-        });
+        })
 
         /* 
             `pageLayout` is an observableArray of arrays representing section Information ( `sectionInfo` ).
@@ -705,11 +682,7 @@ define([
                 params.externalStepData,
                 self.resourceId,
                 params.title, 
-                self.complete,
-                self.saving,
-                self.locked,
-                self.lockExternalStep,
-                self.lockableExternalSteps
+                self.complete
             );
 
             workflowComponentAbstract.savedData.subscribe(function() {

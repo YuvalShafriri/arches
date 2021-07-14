@@ -1,13 +1,12 @@
 define([
     'jquery',
-    'arches',
     'knockout',
     'underscore',
     'dropzone',
     'uuid',
     'viewmodels/widget',
     'bindings/dropzone'
-], function($, arches, ko, _, Dropzone, uuid, WidgetViewModel) {
+], function($, ko, _, Dropzone, uuid, WidgetViewModel) {
     /**
      * A viewmodel used for domain widgets
      *
@@ -137,10 +136,6 @@ define([
                 );
             }
         });
-
-        this.getFileUrl = function(url){
-            return (arches.urls.url_subpath + ko.unwrap(url)).replace('//', '/');
-        };
 
         if (Array.isArray(self.value())) {
             this.uploadedFiles(self.value());
