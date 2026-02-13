@@ -320,52 +320,104 @@ Test composition in `docker-compose-test.yml` for CI environments.
 
 ## AI Analytics Vision (Heritage Data)
 
-### Context
+### Background and Motivation
 
-Arches manages cultural heritage data with rich Hebrew text fields (cultural assessments, conservation recommendations, historical descriptions, risk analysis) alongside structured geospatial and relational data. The analytics layer should serve heritage professionals who need insights from both text and quantitative data.
+The Arches heritage database contains rich, domain-specific data about cultural heritage sites. A representative example is a dataset of 38 historic flour mills (טחנות קמח) across Israel, where each resource record includes:
+
+- **Free-text fields in Hebrew**: cultural assessments (הערכה תרבותית), conservation recommendations (המלצות שימור), historical descriptions (תיאור), spirit of place (רוח המקום), risk descriptions (תיאור סיכונים)
+- **Structured fields**: conservation state (מצב השתמרות), threat types (סוג האיומים), management status (סטטוס ניהול), land use (ייעודי קרקע), historical periods (תקופה)
+- **Geospatial data**: Points, Polygons, GeometryCollections (site boundaries, historical routes, dams, water channels)
+- **References and media**: images, documentation files, external links, bibliography
+
+Heritage professionals need to ask questions that span all of these data types. A single question like "which Crusader-era mills near waterways are at biological risk and lack a full cultural assessment?" touches text analysis, geospatial queries, and structured field filtering simultaneously.
+
+The core insight from our analysis: **neither LLM nor traditional Data Science alone covers all needs**. LLM excels at understanding Hebrew text, extracting meaning, comparing narratives, and generating reports. DS/ML excels at quantitative analysis over large datasets, geospatial computation, and statistical modeling. The system must be flexible enough to use both, and smart enough to choose the right tool for each query.
 
 ### Priority 1: Intelligent Analytics Router (DS + LLM)
 
-A flexible analytics system that automatically routes queries to the appropriate engine:
+A flexible analytics system that automatically routes queries to the appropriate engine.
 
-| Query Type | Engine | Example |
-|---|---|---|
-| Text analysis (Hebrew) | LLM | "Extract cultural values from assessment fields" |
-| Geospatial analysis | PostGIS / GeoPandas | "Cluster heritage sites by proximity to water sources" |
-| Statistical analysis | Python DS pipeline | "Correlation between threat type and conservation state" |
-| Combined | DS pipeline → LLM | "Analyze spatial patterns, then generate narrative report" |
+#### Routing Logic
 
-**Architecture approach**: Build as Arches plugin(s), leveraging the existing plugin system (ETL modules, functions, search components) without modifying core. The Router component (lightweight LLM) classifies incoming queries and delegates to the appropriate pipeline.
+```
+User query (natural language, Hebrew/English)
+    ↓
+  Router (lightweight LLM classifier)
+    ├→ Text analysis query?        → LLM pipeline
+    ├→ Geospatial/spatial query?   → PostGIS / GeoPandas pipeline
+    ├→ Statistical/quantitative?   → Python DS pipeline
+    ├→ Image analysis?             → CV model pipeline
+    └→ Combined/multi-step?        → DS pipeline → results → LLM narrative
+```
 
-**Key capabilities for heritage text fields**:
-- Extract structured data from free-text fields (cultural values, periods, materials, stakeholders)
-- Compare assessments across sites (e.g., mills along different rivers)
-- Identify gaps in documentation (missing fields, thin descriptions)
-- Generate draft assessments based on existing patterns
-- Cross-reference Hebrew/Arabic place names and historical references
+#### Query Type Matrix
 
-**DS pipeline capabilities**:
-- Geospatial clustering and proximity analysis (PostGIS)
-- Statistical correlation across structured fields
-- Topic modeling on large text corpora (1000+ records)
-- Time-series analysis on historical periods
-- Image classification for heritage site photos (CV models)
+| Query Type | Engine | Example | Why Not the Other |
+|---|---|---|---|
+| Text analysis (Hebrew) | LLM | "Extract cultural values from הערכה תרבותית fields" | DS can't understand Hebrew narrative context |
+| Text comparison | LLM | "Compare conservation approaches: Nahal Amud mills vs. Nahal Tzipori mills" | Requires semantic understanding of domain text |
+| Gap detection | LLM | "Which sites have thin descriptions or missing assessments?" | Needs judgment about content quality, not just field presence |
+| Draft generation | LLM | "Generate a cultural assessment draft for טחנת אבו רבאח based on similar sites" | Creative text generation |
+| Geospatial clustering | PostGIS/GeoPandas | "Group sites by proximity to water sources" | LLM can't compute distances on coordinates |
+| Statistical correlation | Python DS | "Is there a significant correlation between threat type and conservation state?" | Requires chi-square / statistical tests on encoded data |
+| Topic modeling | Python DS (NLP) | "What themes emerge across 1000+ cultural assessment texts?" | LLM too expensive at scale; classic NLP more efficient |
+| Time-series | Python DS | "How has conservation state changed across documentation periods?" | Requires temporal aggregation and trend analysis |
+| Image classification | CV models | "Classify site photos by architectural period" | LLM vision not specialized enough for heritage architecture |
+| Combined | DS → LLM | "Analyze spatial patterns of at-risk sites, then generate a policy report" | DS computes, LLM narrates |
+
+#### Practical Estimation for Current Dataset
+
+With ~38 heritage sites and rich text fields, the current workload breaks down approximately:
+- **80-90% LLM-addressable**: Most questions are about understanding, comparing, and extracting from Hebrew text
+- **10-20% requiring DS**: Geospatial queries, statistical tests, and any future scaling to 1000+ records
+
+This ratio will shift toward DS as the dataset grows.
+
+#### Architecture Approach
+
+Build as Arches plugin(s), leveraging the existing plugin system (ETL modules, functions, search components) without modifying core:
+
+- **Router plugin**: Receives natural language queries, classifies intent, delegates to the appropriate pipeline
+- **LLM pipeline plugin**: Connects to LLM API, manages prompts with heritage domain context, handles Hebrew text
+- **DS pipeline plugin**: Runs Python-based analysis (pandas, geopandas, scipy, sklearn) on exported Arches data
+- **Results aggregator**: Combines outputs from multiple pipelines into a unified response
+
+#### Key Capabilities for Heritage Text Fields
+
+- Extract structured data from free-text fields (cultural values, periods, building materials, stakeholders, historical figures)
+- Compare assessments across sites (e.g., mills along Nahal Amud vs. Nahal Na'aman vs. Nahal Tzipori)
+- Identify documentation gaps (missing fields, incomplete descriptions, sites without cultural assessment)
+- Generate draft assessments for under-documented sites based on patterns in well-documented ones
+- Cross-reference Hebrew/Arabic place names and historical references across records
+- Summarize conservation recommendations across a group of sites for policy documents
+
+#### DS Pipeline Capabilities
+
+- Geospatial clustering and proximity analysis (PostGIS native queries)
+- Statistical correlation across structured fields (threat types, conservation state, management status)
+- Topic modeling on large text corpora when dataset scales beyond LLM cost-effectiveness
+- Time-series analysis on historical periods and usage changes
+- Image classification for heritage site photos (architectural style, period, condition)
 
 ### Priority 2: Agent-Based Resource Modeling (Future)
 
-An AI co-pilot that assists in designing Arches Graph/Resource Models:
-- Accepts natural language descriptions of what needs to be documented
-- Proposes graph structure (nodes, edges, datatypes, cardinality) aligned with CIDOC-CRM ontology
-- Explains modeling tradeoffs (normalization, search performance, flexibility)
-- Iterates based on feedback
-- Creates the model via Arches API
+A separate initiative targeting the **schema design phase** rather than data querying. This is an AI co-pilot that assists heritage professionals in designing Arches Graph/Resource Models:
 
-This is a separate initiative from analytics, targeting the schema design phase rather than data querying.
+- Accepts natural language descriptions of what needs to be documented (e.g., "I need to record flour mills with their water systems, historical ownership, and construction phases")
+- Proposes graph structure (nodes, edges, datatypes, cardinality) aligned with CIDOC-CRM ontology
+- Explains modeling tradeoffs: normalization vs. query simplicity, search performance vs. flexibility, granularity vs. usability
+- Iterates based on professional feedback
+- Creates the finalized model via Arches API
+
+This addresses a real pain point: Arches graph modeling is powerful but complex, requiring understanding of ontologies, nodegroups, cardinality rules, and datatype selection. A co-pilot lowers the barrier significantly.
+
+**Not in current scope** — to be developed after the analytics router is functional.
 
 ### Design Principles
 
-- **Plugin-based**: All AI features as Arches plugins, not core modifications
-- **Engine-agnostic**: Router pattern allows swapping/adding DS or LLM backends
-- **Hebrew-first**: All text analysis must handle Hebrew (and Arabic) natively
-- **Transparent**: Users see which engine handled their query and why
-- **Incremental**: Start with LLM-only text analysis, add DS pipelines progressively
+- **Plugin-based**: All AI features built as Arches plugins, not core modifications. This ensures upgradeability and separation of concerns
+- **Engine-agnostic**: Router pattern allows swapping or adding DS/LLM backends without changing the query interface
+- **Hebrew-first**: All text analysis must handle Hebrew (and Arabic) natively, including RTL text, morphological complexity, and domain-specific heritage terminology
+- **Transparent**: Users see which engine handled their query and why, building trust in the results
+- **Incremental**: Start with LLM-only text analysis (covers 80-90% of current needs), add DS pipelines progressively as the dataset grows and quantitative needs emerge
+- **Domain-aware**: Prompts and pipelines are tuned for cultural heritage vocabulary and concepts, not generic
