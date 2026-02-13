@@ -418,11 +418,11 @@ This addresses a real pain point: Arches graph modeling is powerful but complex,
 The system uses LLMs at three distinct layers, each with a different model tier and token budget:
 
 1. **Router (classification)** — A small, fast model (e.g. Haiku-class). Receives the user query, outputs a short structured classification (query type + target pipeline). Minimal tokens — tens, not hundreds. Runs on every query.
-2. **Analysis pipeline (text understanding)** — A capable model (e.g. Sonnet-class). Receives heritage data + domain-tuned prompt, performs the actual text analysis, comparison, or generation. This is where most tokens are spent. Runs only when the router classifies the query as LLM-appropriate.
-3. **Narrative layer (optional)** — Same capable model. Takes DS pipeline results (numbers, tables, spatial data) and generates a human-readable summary or report. Runs only for combined queries where DS computes and LLM narrates.
+2. **Analysis pipeline (text understanding)** — The strongest available model (e.g. Opus, GPT-4.5, Gemini 2.5 Pro — whichever is best for Hebrew at the time). Heritage text analysis in Hebrew demands top-tier language understanding: domain-specific terminology, cultural nuance, morphological complexity. At the current scale (~38 sites), volume is low enough that premium model cost is justified by the quality gap. The system should be **model-agnostic** — configurable to swap between providers as the landscape evolves.
+3. **Narrative layer (optional)** — Same strongest-tier model. Takes DS pipeline results (numbers, tables, spatial data) and generates a human-readable summary or report. Quality of Hebrew narrative output matters for professional heritage documents. Runs only for combined queries where DS computes and LLM narrates.
 
 **Cost control principles:**
-- **Right-size the model per task**: Classification doesn't need a large model; analysis does. Never send large payloads to the router.
+- **Right-size the model per task**: Router = small/cheap, Analysis + Narrative = best available. The cost asymmetry is by design — classification is high-frequency/low-cost, analysis is low-frequency/high-quality. Never send large payloads to the router.
 - **Pre-filter data before sending to LLM**: Query only the relevant records from the database first (SQL/PostGIS), then send the filtered subset to the LLM — never dump the entire dataset into a prompt.
 - **Cache repeated patterns**: Common query types (e.g., "summarize site X") produce reusable prompt templates. Cache LLM responses for identical inputs within a session.
 - **Set token budgets per query type**: Define max input/output token limits for each pipeline stage. A gap-detection query on 38 sites should not consume the same budget as a full comparative report.
