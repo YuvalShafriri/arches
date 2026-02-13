@@ -317,3 +317,55 @@ docker-compose up -d                  # start all services (arches, nginx, postg
 Services defined in `docker-compose.yml`: arches (app), nginx (reverse proxy), db (PostGIS), elasticsearch, letsencrypt.
 
 Test composition in `docker-compose-test.yml` for CI environments.
+
+## AI Analytics Vision (Heritage Data)
+
+### Context
+
+Arches manages cultural heritage data with rich Hebrew text fields (cultural assessments, conservation recommendations, historical descriptions, risk analysis) alongside structured geospatial and relational data. The analytics layer should serve heritage professionals who need insights from both text and quantitative data.
+
+### Priority 1: Intelligent Analytics Router (DS + LLM)
+
+A flexible analytics system that automatically routes queries to the appropriate engine:
+
+| Query Type | Engine | Example |
+|---|---|---|
+| Text analysis (Hebrew) | LLM | "Extract cultural values from assessment fields" |
+| Geospatial analysis | PostGIS / GeoPandas | "Cluster heritage sites by proximity to water sources" |
+| Statistical analysis | Python DS pipeline | "Correlation between threat type and conservation state" |
+| Combined | DS pipeline → LLM | "Analyze spatial patterns, then generate narrative report" |
+
+**Architecture approach**: Build as Arches plugin(s), leveraging the existing plugin system (ETL modules, functions, search components) without modifying core. The Router component (lightweight LLM) classifies incoming queries and delegates to the appropriate pipeline.
+
+**Key capabilities for heritage text fields**:
+- Extract structured data from free-text fields (cultural values, periods, materials, stakeholders)
+- Compare assessments across sites (e.g., mills along different rivers)
+- Identify gaps in documentation (missing fields, thin descriptions)
+- Generate draft assessments based on existing patterns
+- Cross-reference Hebrew/Arabic place names and historical references
+
+**DS pipeline capabilities**:
+- Geospatial clustering and proximity analysis (PostGIS)
+- Statistical correlation across structured fields
+- Topic modeling on large text corpora (1000+ records)
+- Time-series analysis on historical periods
+- Image classification for heritage site photos (CV models)
+
+### Priority 2: Agent-Based Resource Modeling (Future)
+
+An AI co-pilot that assists in designing Arches Graph/Resource Models:
+- Accepts natural language descriptions of what needs to be documented
+- Proposes graph structure (nodes, edges, datatypes, cardinality) aligned with CIDOC-CRM ontology
+- Explains modeling tradeoffs (normalization, search performance, flexibility)
+- Iterates based on feedback
+- Creates the model via Arches API
+
+This is a separate initiative from analytics, targeting the schema design phase rather than data querying.
+
+### Design Principles
+
+- **Plugin-based**: All AI features as Arches plugins, not core modifications
+- **Engine-agnostic**: Router pattern allows swapping/adding DS or LLM backends
+- **Hebrew-first**: All text analysis must handle Hebrew (and Arabic) natively
+- **Transparent**: Users see which engine handled their query and why
+- **Incremental**: Start with LLM-only text analysis, add DS pipelines progressively
