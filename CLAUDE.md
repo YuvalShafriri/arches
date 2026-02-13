@@ -421,13 +421,23 @@ The system uses LLMs at three distinct layers, each with a different model tier 
 2. **Analysis pipeline (text understanding)** — The strongest available model (e.g. Opus, GPT-4.5, Gemini 2.5 Pro — whichever is best for Hebrew at the time). Heritage text analysis in Hebrew demands top-tier language understanding: domain-specific terminology, cultural nuance, morphological complexity. At the current scale (~38 sites), volume is low enough that premium model cost is justified by the quality gap. The system should be **model-agnostic** — configurable to swap between providers as the landscape evolves.
 3. **Narrative layer (optional)** — Same strongest-tier model. Takes DS pipeline results (numbers, tables, spatial data) and generates a human-readable summary or report. Quality of Hebrew narrative output matters for professional heritage documents. Runs only for combined queries where DS computes and LLM narrates.
 
+**Open-source and fine-tuned models:**
+
+The system must support self-hosted and custom models alongside commercial APIs. This is critical for two reasons: (1) a model fine-tuned on heritage data in Hebrew can outperform a general-purpose frontier model on domain tasks, at a fraction of the cost; (2) organizations may require data to stay on-premises for privacy or policy reasons.
+
+- **Any layer can run a local model**: The model-agnostic interface (OpenAI-compatible API) means each layer can independently point to a commercial API, a self-hosted open-source model (Llama, Mistral, etc.), or a fine-tuned model — configured per deployment.
+- **Fine-tuning path**: When enough labeled heritage data accumulates (assessments, classifications, conservation reports), fine-tune a smaller open-source model on this domain data. A fine-tuned 7B-13B model on heritage Hebrew can replace a frontier model for routine analysis tasks — dramatically reducing per-query cost while maintaining (or improving) domain accuracy.
+- **Hybrid setup**: Use fine-tuned model for well-defined recurring tasks (field extraction, gap detection, standard classifications) and frontier model for open-ended tasks (comparative analysis, draft generation, novel queries). The router can direct to the appropriate model based on query type.
+- **Evaluation loop**: Periodically benchmark fine-tuned models against frontier models on a heritage test set to know when the fine-tuned model is "good enough" to take over a task category.
+
 **Cost control principles:**
-- **Right-size the model per task**: Router = small/cheap, Analysis + Narrative = best available. The cost asymmetry is by design — classification is high-frequency/low-cost, analysis is low-frequency/high-quality. Never send large payloads to the router.
+- **Right-size the model per task**: Router = small/cheap, Analysis + Narrative = best available (or fine-tuned equivalent). The cost asymmetry is by design — classification is high-frequency/low-cost, analysis is low-frequency/high-quality. Never send large payloads to the router.
 - **Pre-filter data before sending to LLM**: Query only the relevant records from the database first (SQL/PostGIS), then send the filtered subset to the LLM — never dump the entire dataset into a prompt.
 - **Cache repeated patterns**: Common query types (e.g., "summarize site X") produce reusable prompt templates. Cache LLM responses for identical inputs within a session.
 - **Set token budgets per query type**: Define max input/output token limits for each pipeline stage. A gap-detection query on 38 sites should not consume the same budget as a full comparative report.
 - **Prefer DS when scale grows**: As the dataset scales beyond ~100 records, shift statistical and pattern-detection tasks to DS pipelines (topic modeling, clustering) rather than processing them through the LLM.
-- **Monitor and alert**: Track token usage per query type. Flag queries that exceed expected budgets for review.
+- **Prefer fine-tuned when proven**: Once a fine-tuned model passes the evaluation threshold for a task category, make it the default for that category — reserving frontier models for tasks where the fine-tuned model falls short.
+- **Monitor and alert**: Track token usage per query type and per model. Flag queries that exceed expected budgets for review.
 
 ### Design Principles
 
