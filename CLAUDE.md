@@ -413,6 +413,22 @@ This addresses a real pain point: Arches graph modeling is powerful but complex,
 
 **Not in current scope** — to be developed after the analytics router is functional.
 
+### LLM Usage Strategy and Cost Control
+
+The system uses LLMs at three distinct layers, each with a different model tier and token budget:
+
+1. **Router (classification)** — A small, fast model (e.g. Haiku-class). Receives the user query, outputs a short structured classification (query type + target pipeline). Minimal tokens — tens, not hundreds. Runs on every query.
+2. **Analysis pipeline (text understanding)** — A capable model (e.g. Sonnet-class). Receives heritage data + domain-tuned prompt, performs the actual text analysis, comparison, or generation. This is where most tokens are spent. Runs only when the router classifies the query as LLM-appropriate.
+3. **Narrative layer (optional)** — Same capable model. Takes DS pipeline results (numbers, tables, spatial data) and generates a human-readable summary or report. Runs only for combined queries where DS computes and LLM narrates.
+
+**Cost control principles:**
+- **Right-size the model per task**: Classification doesn't need a large model; analysis does. Never send large payloads to the router.
+- **Pre-filter data before sending to LLM**: Query only the relevant records from the database first (SQL/PostGIS), then send the filtered subset to the LLM — never dump the entire dataset into a prompt.
+- **Cache repeated patterns**: Common query types (e.g., "summarize site X") produce reusable prompt templates. Cache LLM responses for identical inputs within a session.
+- **Set token budgets per query type**: Define max input/output token limits for each pipeline stage. A gap-detection query on 38 sites should not consume the same budget as a full comparative report.
+- **Prefer DS when scale grows**: As the dataset scales beyond ~100 records, shift statistical and pattern-detection tasks to DS pipelines (topic modeling, clustering) rather than processing them through the LLM.
+- **Monitor and alert**: Track token usage per query type. Flag queries that exceed expected budgets for review.
+
 ### Design Principles
 
 - **Plugin-based**: All AI features built as Arches plugins, not core modifications. This ensures upgradeability and separation of concerns
@@ -421,3 +437,4 @@ This addresses a real pain point: Arches graph modeling is powerful but complex,
 - **Transparent**: Users see which engine handled their query and why, building trust in the results
 - **Incremental**: Start with LLM-only text analysis (covers 80-90% of current needs), add DS pipelines progressively as the dataset grows and quantitative needs emerge
 - **Domain-aware**: Prompts and pipelines are tuned for cultural heritage vocabulary and concepts, not generic
+- **Cost-conscious**: Every LLM call is justified — right model, right data scope, right token budget. No "send everything and hope" approach
